@@ -1,5 +1,5 @@
-# Nijmeegse vierdaagse
-Dit script refreshed de pagina om tickets opnieuw te kopen tot er tickets gevonden zijn. 
+# Nijmeegse vierdaagse ticket scraping bot
+Dit script refreshed de pagina om tickets opnieuw te kopen tot er tickets gevonden zijn. Je zal zelf handmatig je gegevens in deze browser window moeten invullen.
 
 # Note
 Ik weet niet of dit script werkt of niet, tot nu toe zijn er nog geen tickets gekomen welke beschikbaar waren. 
