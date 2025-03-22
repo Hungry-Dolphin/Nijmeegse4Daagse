@@ -8,21 +8,41 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 from random import uniform
+from fp.fp import FreeProxy
 from time import sleep
+import threading
+from selenium.webdriver.common.proxy import *
 
 
-class TicketGetter:
-    tickets = False
+class Worker(threading.Thread):
+    def __init__(self, name, url, tickets):
+        super().__init__()
 
-    def __init__(self, url):
-        self.__BASE_URL = url
+        self.name = name
+        self.url = url
+        self.tickets = tickets
+        rand_proxy = FreeProxy(https=True).get()
+        proxy = Proxy({
+            'proxyType': ProxyType.MANUAL,
+            'httpProxy': rand_proxy,
+            'sslProxy': rand_proxy,
+            'noProxy': ''
+        })
 
         options = Options()
+        options.add_argument(f"--proxy-server={proxy}")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option('useAutomationExtension', False)
+
+
         # options.add_argument(f'user-agent={user_agent}')
+        options.proxy = proxy
 
         self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
+    def found_tickets(self):
+        self.tickets.set()
+        input()
 
     def sanity_check(self):
         # Sanity check for as long as im not sure that the ticket click function works
@@ -32,15 +52,17 @@ class TicketGetter:
 
         return True if tickets_free == "0 tickets available" else False
 
-
-    def main(self):
+    def run(self):
+        print(f"Thread {self.name} starting")
         # Open the page
-        self.driver.get(f'{self.__BASE_URL}')
+        self.driver.get(f'{self.url}')
 
-        while not self.tickets:
+        while not self.tickets.is_set():
+
             try:
                 # Wait for the page to load in
-                WebDriverWait(self.driver, 3).until(ec.presence_of_element_located((By.XPATH, "//span[contains(text(),'ticket')]")))
+                WebDriverWait(self.driver, 3).until(
+                    ec.presence_of_element_located((By.XPATH, "//span[contains(text(),'ticket')]")))
 
                 # Click on the "Tickets kopen" button if it is there. The wait is a bit random about it so we kinda hide the fact we are automated
                 free_tickets = WebDriverWait(self.driver, uniform(5.5, 6)).until(
@@ -48,20 +70,17 @@ class TicketGetter:
 
                 # We found tickets lets quickly press the button
                 free_tickets.click()
-                input()
+                self.found_tickets()
 
             except TimeoutException:
                 # This means no tickets but just to be sure we run the sanity check
                 if not self.sanity_check():
-                    input()
+                    self.found_tickets()
 
                 # There are really no tickets, lets refresh and try again
-                sleep(2)  # A bit of hardcoded sleep since I was getting throttled in the long run
+                sleep(3)  # A bit of hardcoded sleep since I was getting throttled in the long run
                 self.driver.refresh()
 
-
+        # Some other thread found the tickets, close this one to reduce confusion
         self.driver.close()
 
-
-if __name__ == '__main__':
-    TicketGetter('https://atleta.cc/e/zRLhtOq7pOcB/resale').main()
