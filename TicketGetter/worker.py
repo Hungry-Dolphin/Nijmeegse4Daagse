@@ -8,35 +8,27 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 from random import uniform
-from fp.fp import FreeProxy
 from time import sleep
 import threading
-from selenium.webdriver.common.proxy import *
+import json
 
 
 class Worker(threading.Thread):
-    def __init__(self, name, url, tickets):
+    def __init__(self, identity:int, url, tickets):
         super().__init__()
 
-        self.name = name
+        self.identity = identity
         self.url = url
         self.tickets = tickets
-        rand_proxy = FreeProxy(https=True).get()
-        proxy = Proxy({
-            'proxyType': ProxyType.MANUAL,
-            'httpProxy': rand_proxy,
-            'sslProxy': rand_proxy,
-            'noProxy': ''
-        })
+
+        with open('config.json', 'r') as f:
+            config = json.load(f)
 
         options = Options()
-        options.add_argument(f"--proxy-server={proxy}")
+        options.add_argument(f"--proxy-server={config['HOSTNAME']}:{int(config['PORT'])+identity}")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option('useAutomationExtension', False)
-
-
         # options.add_argument(f'user-agent={user_agent}')
-        options.proxy = proxy
 
         self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
@@ -53,7 +45,7 @@ class Worker(threading.Thread):
         return True if tickets_free == "0 tickets available" else False
 
     def run(self):
-        print(f"Thread {self.name} starting")
+        print(f"Thread {self.identity} starting")
         # Open the page
         self.driver.get(f'{self.url}')
 
@@ -78,7 +70,7 @@ class Worker(threading.Thread):
                     self.found_tickets()
 
                 # There are really no tickets, lets refresh and try again
-                sleep(3)  # A bit of hardcoded sleep since I was getting throttled in the long run
+                sleep(3.5)  # A bit of hardcoded sleep since I was getting throttled in the long run
                 self.driver.refresh()
 
         # Some other thread found the tickets, close this one to reduce confusion
