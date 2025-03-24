@@ -20,10 +20,10 @@ class TicketGetter:
         # Start all workers
         for worker in self.worker_list:
             worker.start()
-            # Stagger worker start for more refresh coverage
+            # Stagger worker start for more refresh coverage, this will naturally deviate with the random delays
             sleep(1)
 
 
 
 if __name__ == '__main__':
-    TicketGetter('https://atleta.cc/e/zRLhtOq7pOcB/resale', 5).main()
+    TicketGetter('https://atleta.cc/e/zRLhtOq7pOcB/resale', 7).main()
