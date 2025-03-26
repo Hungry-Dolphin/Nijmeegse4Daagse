@@ -26,4 +26,4 @@ class TicketGetter:
 
 
 if __name__ == '__main__':
-    TicketGetter('https://atleta.cc/e/zRLhtOq7pOcB/resale', 7).main()
+    TicketGetter('https://atleta.cc/e/zRLhtOq7pOcB/resale', 4).main()

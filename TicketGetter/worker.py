@@ -50,22 +50,24 @@ class Worker(threading.Thread):
         # Sanity check for as long as im not sure that the ticket click function works
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
         # The amount of tickets available is in a <span class="sc-gEvEer cbueMy">0 tickets available</span>
-        tickets_free = soup.find('span', {'class': 'sc-gEvEer cbueMy'}).get_text()
+        try:
+            tickets_free = soup.find('span', {'class': 'sc-gEvEer cbueMy'}).get_text()
 
-
-        if tickets_free != "0 tickets available":
-            try:
+            if tickets_free != "0 tickets available":
                 already_reserved = soup.find('div', {'class': 'sc-aXZVg jwmJCo'}).get_text()
                 if already_reserved == "Reserved":
                     # There is a ticket but it is already reserved
                     return True
                 # There is a ticket and it's not reserved
                 return False
-            except:
-                # Something weird is going on (send a notification just incase)
-                return False
-        # No ticket found
-        return True
+
+            # No ticket found
+            return True
+
+        except AttributeError:
+            # We are most likely getting rate limited lets just wait
+            sleep(10)
+            return True
 
 
     def run(self):
@@ -82,9 +84,9 @@ class Worker(threading.Thread):
 
                 # Click on the "Tickets kopen" button if it is there.
                 # //*[self::button[contains(@class, 'sc-dcJsrY') "//*[self::a or self::button][contains(text(), 'Ticket')]"
-                free_tickets = WebDriverWait(self.driver, 3).until(
+                free_tickets = WebDriverWait(self.driver, 2).until(
                     # Since we are not 100% sure how the ticket button would look like
-                    ec.element_to_be_clickable((By.XPATH, "//*[self::button[contains(@class, 'sc-dcJsrY') and contains(@class, 'anvKL')] or (self::a[contains(text(), 'Ticket')] or self::button[contains(text(), 'Ticket')])]")))
+                    ec.element_to_be_clickable((By.XPATH, "//*[self::button[contains(@class, 'sc-dcJsrY') and contains(@class, 'anvKL')] or (self::a[contains(text(), 'ticket')] or self::button[contains(text(), 'ticket')] or self::button[contains(text(), 'Buy')])]")))
 
                 # We found tickets lets quickly press the button
                 print(f"Worker {self.identity} found tickets though xpath")
@@ -98,7 +100,7 @@ class Worker(threading.Thread):
                     self.found_tickets()
 
                 # There are really no tickets, lets refresh and try again
-                sleep(uniform(4, 4.5))  # The wait is a bit random about it so we kinda hide the fact we are automated
+                sleep(uniform(7, 7.5))  # The wait is a bit random about it so we kinda hide the fact we are automated
                 self.driver.refresh()
 
         # Some other thread found the tickets, close this one to reduce confusion
