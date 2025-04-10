@@ -12,6 +12,7 @@ from time import sleep
 import threading
 import json
 import requests
+from selenium_stealth import stealth
 
 
 class Worker(threading.Thread):
@@ -28,12 +29,22 @@ class Worker(threading.Thread):
         self.notify_url = config['NOTIFY_URL']
 
         options = Options()
+        options.add_argument("start-maximized")
         options.add_argument(f"--proxy-server={config['HOSTNAME']}:{int(config['PORT'])+identity}")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option('useAutomationExtension', False)
-        # options.add_argument(f'user-agent={user_agent}')
+        options.add_argument('--disable-blink-features=AutomationControlled')
+        options.add_argument(f'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.3')
 
         self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        stealth(self.driver,
+                languages=["en-US", "en"],
+                vendor="Google Inc.",
+                platform="Win32",
+                webgl_vendor="Intel Inc.",
+                renderer="Intel Iris OpenGL Engine",
+                fix_hairline=True,
+                )
 
     def found_tickets(self):
         self.tickets.set()
@@ -76,13 +87,22 @@ class Worker(threading.Thread):
         self.driver.get(f'{self.url}')
 
         while not self.tickets.is_set():
-
             try:
-                # Wait for the page to load in
                 WebDriverWait(self.driver, 3).until(
                     ec.presence_of_element_located((By.XPATH, "//span[contains(text(),'ticket')]")))
 
-                # Click on the "Tickets kopen" button if it is there.
+            except TimeoutException as e:
+                print(e)
+                # 100% This means we got cloudflare challenged
+                checkbox = WebDriverWait(self.driver, 6).until(
+                    ec.presence_of_element_located((By.CSS_SELECTOR , "input[type='checkbox']")))
+                checkbox.click()
+
+                print()
+
+            try:
+                # Wait for the page to load in
+                                # Click on the "Tickets kopen" button if it is there.
                 # //*[self::button[contains(@class, 'sc-dcJsrY') "//*[self::a or self::button][contains(text(), 'Ticket')]"
                 free_tickets = WebDriverWait(self.driver, 2).until(
                     # Since we are not 100% sure how the ticket button would look like
